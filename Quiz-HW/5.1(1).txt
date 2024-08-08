@@ -1,0 +1,74 @@
+#include <stdlib.h>
+#include <string.h>
+
+#define SIZE 109
+
+struct bucket {
+    string key;
+    void *binding;
+    struct bucket *next;
+};
+
+struct symbol_table {
+    struct bucket **table;
+    int size;
+};
+
+unsigned int hash(char *s) {
+    unsigned int h = 0;
+    char *p;
+    for(p = s; *p; p++)
+        h = h * 65599 + *p;
+    return h;
+}
+
+struct bucket *Bucket(string key, void *binding, struct bucket *next) {
+    struct bucket *b = (struct bucket *)malloc(sizeof(struct bucket));
+    b->key = key;
+    b->binding = binding;
+    b->next = next;
+    return b;
+}
+
+void insert(struct symbol_table *st, string key, void *binding) {
+    int index = hash(key) % st->size;
+    st->table[index] = Bucket(key, binding, st->table[index]);
+}
+
+void *lookup(struct symbol_table *st, string key) {
+    int index = hash(key) % st->size;
+    struct bucket *b;
+    for(b = st->table[index]; b; b = b->next) {
+        if (strcmp(b->key, key) == 0)
+            return b->binding;
+    }
+    return NULL;
+}
+
+void resize(struct symbol_table *st) {
+    int old_size = st->size;
+    struct bucket **old_table = st->table;
+
+    st->size *= 2;
+    st->table = (struct bucket **)malloc(st->size * sizeof(struct bucket *));
+    if (st->table == NULL) {
+        // 内存分配失败
+        exit(EXIT_FAILURE);
+    }
+    for (int i = 0; i < st->size; i++) {
+        st->table[i] = NULL;
+    }
+
+    // 重新散列原数组中的内容
+    for (int i = 0; i < old_size; i++) {
+        struct bucket *b = old_table[i];
+        while (b != NULL) {
+            struct bucket *next = b->next;
+            insert(st, b->key, b->binding);
+            free(b);
+            b = next;
+        }
+    }
+
+    free(old_table);
+}
